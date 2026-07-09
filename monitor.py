@@ -1,6 +1,7 @@
-import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+import csv
+from datetime import datetime
 
 KEYWORDS = [
     "safe deposit",
@@ -8,32 +9,39 @@ KEYWORDS = [
     "tangible property",
     "auction",
     "vault",
+    "contents",
     "jewelry",
+    "coins",
     "gold",
     "silver",
-    "coin"
 ]
 
-states = pd.read_csv("states.csv")
+with open("states.csv", newline="", encoding="utf-8") as file:
+    reader = csv.DictReader(file)
 
-for _, row in states.iterrows():
-    state = row["State"]
-    url = row["Website"]
+    print(f"\nUS Property Monitor")
+    print(f"Scan Time: {datetime.utcnow()} UTC\n")
 
-    print(f"Checking {state}...")
+    for row in reader:
+        state = row["State"]
+        url = row["Website"]
 
-    try:
-        r = requests.get(url, timeout=20)
-        soup = BeautifulSoup(r.text, "lxml")
-        text = soup.get_text(" ", strip=True).lower()
+        try:
+            response = requests.get(url, timeout=30)
+            response.raise_for_status()
 
-        matches = [k for k in KEYWORDS if k in text]
+            soup = BeautifulSoup(response.text, "html.parser")
+            text = soup.get_text(" ", strip=True).lower()
 
-        if matches:
-            print(f"FOUND: {state}")
-            print(matches)
-            print(url)
-            print("-" * 40)
+            matches = [k for k in KEYWORDS if k in text]
 
-    except Exception as e:
-        print(f"Error checking {state}: {e}")
+            if matches:
+                print("=" * 60)
+                print(f"STATE: {state}")
+                print(f"WEBSITE: {url}")
+                print("MATCHES:")
+                for m in matches:
+                    print(f" - {m}")
+
+        except Exception as e:
+            print(f"{state}: {e}")
